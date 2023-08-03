@@ -16,6 +16,8 @@ model = lm_head_model.transformer
 
 wte = model.wte.weight.data.numpy().transpose() # shape (768, 50257) /!\ i hate this
 wpe = model.wpe.weight.data.numpy().transpose() # shape (768, 1024)
+#wpe.weight	[1024,768]	F32
+#wte.weight	[50257,768]	F32
 
 sequence_length = 64
 steps = 12
@@ -73,12 +75,17 @@ builder.add_add_broadcastable(
 	output_name=f'{0}_previous_block'
 )
 
+
+#-----------STARTING LN_1 BIAS LN_1 WEIGHT------------------------
 for i in range(steps):
 	print(i)
 	ln_weight = model.h[i].ln_1.weight.data.numpy().reshape((1, 1, 768, 1, 1))
+	#h.0.ln_1.weight	[768]	F32
 	ln_bias = model.h[i].ln_1.bias.data.numpy().reshape((1, 1, 768, 1, 1))
+	#h.0.ln_1.bias	[768]	F32
 	ln_epsilon = model.h[i].ln_1.eps
-
+	#CHANGING THE LN_NUMBER(LN_1) TO LN_2
+	
 	builder.add_mvn(
 		name=f"{i}_block_ln_1",
 		input_name=f"{i}_previous_block",
@@ -106,11 +113,14 @@ for i in range(steps):
 		output_name=f"{i}_block_ln_1_scaled_transposed",
 		axes=(1, 0, 2, 3, 4)
 	)
-
-
+#-----------ENDING LN_1 BIAS----------------LN_1 WEIGHT------------------------
+#------------STARTING ATTN C BIAS-----------ATTN C WEIGHT-------------------------
 	conv_1D_bias = model.h[i].attn.c_attn.bias.data.numpy().reshape((1, 1, 2304, 1, 1))
+	#h.0.attn.c_attn.bias	[2304]	F32
+	
 	conv_1D_weights = model.h[i].attn.c_attn.weight.data.numpy().transpose().reshape((1, 768, 2304, 1, 1))
-
+	#h.0.attn.c_attn.weight	[768,2304]	F32
+	
 	builder.add_inner_product(
 		name=f"{i}_block_attn_conv",
 		input_name=f"{i}_block_ln_1_scaled_transposed",
@@ -256,7 +266,7 @@ for i in range(steps):
 		output_name=f"{i}_block_attn_conv_proj_t",
 		axes=[0, 3, 4, 1, 2]
 	)
-
+#---------------STARTING ATTN C PROJ BIAS-----ATTN C PROJ WEIGHT--------------
 	conv_1D_proj_bias = model.h[i].attn.c_proj.bias.data.numpy().reshape((1, 1, 768, 1, 1))
 	conv_1D_proj_weights = model.h[i].attn.c_proj.weight.data.numpy().transpose().reshape((1, 768, 768, 1, 1))
 
@@ -271,7 +281,6 @@ for i in range(steps):
 		b=conv_1D_proj_bias,
 		has_bias=True
 	)
-
 	# Input: (seq, 1, 768, 1, 1), Output: (1, seq, 768, 1, 1)
 	builder.add_transpose(
 		name=f"{i}_previous_block_t",
@@ -287,7 +296,9 @@ for i in range(steps):
 		output_name=f"{i}_block_xa_sum",
 		# output_name=f"output_logits"
 	)
+#------------ENDING ATTN C BIAS----------ATTN C WEIGHT-------------------------
 
+#-------------STARTING LN_2 BIAS--------LN_2 WEIGHT---------------
 	ln_2_weight = model.h[i].ln_2.weight.data.numpy().reshape((1, 1, 768, 1, 1))
 	ln_2_bias = model.h[i].ln_2.bias.data.numpy().reshape((1, 1, 768, 1, 1))
 	ln_2_epsilon = model.h[i].ln_2.eps
@@ -314,6 +325,8 @@ for i in range(steps):
 		shape_bias=[768]
 	)
 
+#-------------ENDING LN_2 BIAS--------LN_2 WEIGHT---------------
+#---------------STARTING MLP C FC BIAS-----MLP C FC WEIGHT----------------------
 	mlp_conv_1D_fc_bias = model.h[i].mlp.c_fc.bias.data.numpy().reshape((1, 1, 3072, 1, 1))
 	mlp_conv_1D_fc_weights = model.h[i].mlp.c_fc.weight.data.numpy().transpose().reshape((1, 768, 3072, 1, 1))
 
@@ -337,7 +350,8 @@ for i in range(steps):
 		# output_name=f"output_logits",
 		mode='TANH_APPROXIMATION'
 	)
-
+#---------------ENDING MLP C FC BIAS-----MLP C FC WEIGHT----------------------
+#---------------STARTING MLP C PROJ BIAS-----MLP C PROJ WEIGHT----------------------
 	mlp_conv_1D_proj_bias = model.h[i].mlp.c_proj.bias.data.numpy().reshape((1, 1, 768, 1, 1))
 	mlp_conv_1D_proj_weights = model.h[i].mlp.c_proj.weight.data.numpy().transpose().reshape((1, 3072, 768, 1, 1))
 
@@ -367,8 +381,9 @@ for i in range(steps):
 		output_name=f"{i + 1}_previous_block",
 		axes=[1, 0, 2, 3, 4]
 	)
+#---------------ENDING MLP C PROJ BIAS-----MLP C PROJ WEIGHT----------------------
 
-
+#POSSIBILY SETTING UF FOR A METHOD OF REPEATING LN_1 THEN LN_2, THATS WHY ITS NAMED LN_F
 ln_f_weight = model.ln_f.weight.data.numpy().reshape((1, 1, 768, 1, 1))
 ln_f_bias = model.ln_f.bias.data.numpy().reshape((1, 1, 768, 1, 1))
 ln_f_epsilon = model.ln_f.eps

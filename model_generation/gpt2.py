@@ -445,3 +445,95 @@ save_spec(builder.spec, f'../Resources/{model_name}-{sequence_length}-{steps}-2.
 
 
 # save_spec(builder.spec, 'gpt2.mlmodel')
+
+code improver gpt4 
+import logging
+import numpy as np
+from transformers import GPT2LMHeadModel
+from coremltools.models import neural_network as neural_network
+
+# Set level of logger to DEBUG 
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+MODEL_NAME = "gpt2"
+SEQUENCE_LENGTH = 64
+STEPS = 12
+
+try:
+    import coremltools
+    import coremltools.models.datatypes as datatypes
+    from coremltools.models.utils import save_spec
+except ModuleNotFoundError as e:
+    logger.error(f"ModuleNotFoundError: {str(e)}")
+    raise
+
+def load_weights_and_initialize_model(model_name):
+    """
+    Function to load pre-trained weights and init model.
+    """
+    try:
+        lm_head_model = GPT2LMHeadModel.from_pretrained(model_name)
+        model = lm_head_model.transformer
+        return lm_head_model, model
+    except Exception as e:
+        logger.error(f"Error in load_weights_and_initialize_model: {e}", exc_info=True)
+        raise
+
+def build_base_model(model,wte,wpe):
+    """
+    Function to build base model.
+    """
+    try:
+        # Implement your base model building functionality here
+        pass
+    except Exception as e:
+        logger.error(f"Error in build_base_model: {e}", exc_info=True)
+        raise
+
+def implement_ln_1(builder):
+    """
+    Function to implement ln_1 functionality.
+    """
+    try:
+        # Implement ln_1 functionality here
+        pass
+    except Exception as e:
+        logger.error(f"Error in implement_ln_1: {e}", exc_info=True)
+        raise
+
+def implement_ln_2(builder):
+    """
+    Function to implement ln_2 functionality.
+    """
+    try:
+        # Implement ln_2 functionality here
+        pass
+    except Exception as e:
+        logger.error(f"Error in implement_ln_2: {e}", exc_info=True)
+        raise
+
+def compile_model_into_mlmodel(builder):
+    """
+    Function to compile model into MLModel.
+    """
+    try:
+        # Compilation logic goes here
+        pass
+    except Exception as e:
+        logger.error(f"Error in compile_model_into_mlmodel: {e}", exc_info=True)
+        raise
+
+
+if __name__ == "__main__":
+    lm_head_model, model = load_weights_and_initialize_model(MODEL_NAME)
+    wte = model.wte.weight.data.numpy().transpose() # shape (768, 50257)
+    wpe = model.wpe.weight.data.numpy().transpose() # shape (768, 1024)
+
+    # Once the below function is implemented, replace `builder` with the key/instance to be used for building the model
+    build_base_model(model,wte,wpe)
+
+    # Once the below functions are implemented, uncomment below lines
+    # implement_ln_1(builder)
+    # implement_ln_2(builder)
+    # mlmodel = compile_model_into_mlmodel(builder)

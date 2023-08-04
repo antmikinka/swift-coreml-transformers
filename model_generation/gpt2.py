@@ -35,6 +35,26 @@ builder = neural_network.NeuralNetworkBuilder(
 	mode=None,
 	disable_rank5_shape_mapping=True,
 )
+
+'''
+The builder.add_expand_dims function is used to add additional dimensions to an input tensor. 
+This is useful for models that expect input tensors to have a specific rank.
+
+In the code you provided, the input_ids and position_ids tensors are both rank-1 tensors. 
+The builder.add_expand_dims function is used to expand them to rank-5 tensors. 
+This is necessary because the transformer model expects the input tensors to have rank-5.
+
+The axes argument to the builder.add_expand_dims function specifies the dimensions to be expanded. 
+In the code you provided, the axes argument is set to [1, 2, 3, 4]. This means that the first four 
+	dimensions of the input tensors will be expanded.
+
+The result of the builder.add_expand_dims function is two new tensors, input_ids_expanded_to_rank5 and 
+	position_ids_expanded_to_rank5. These tensors have rank-5, which is the expected rank for the input 
+ 	tensors of the transformer model.
+
+I hope this explanation is helpful! Let me know if you have any other questions.
+'''
+
 builder.add_expand_dims(
 	name='input_ids_expanded_to_rank5',
 	input_name='input_ids',
@@ -115,6 +135,74 @@ for i in range(steps):
 	)
 #-----------ENDING LN_1 BIAS----------------LN_1 WEIGHT------------------------
 #------------STARTING ATTN C BIAS-----------ATTN C WEIGHT-------------------------
+'''
+The code you provided is a part of the transformer model implementation in the Swift-CoreML-Transformers library. 
+It is used to compute the attention weights for the self-attention layer in the encoder block.
+The first few lines of code define the weights and biases for the inner product layer that is used to compute the 
+	attention weights. The inner product layer has 768 input channels and 2304 output channels. 
+ 
+ The weights are initialized with the values from the model.h[i].attn.c_attn.weight tensor, 
+ 	and the biases are initialized with the values from the model.h[i].attn.c_attn.bias tensor.
+
+The next few lines of code split the output of the inner product layer into three tensors: q, k, and v. 
+	These tensors represent the query, key, and value vectors for the self-attention layer.
+
+The next few lines of code reshape the q, k, and v tensors to have the same shape as the input sequence. 
+	This is necessary because the batched_mat_mul layer that is used to compute the attention weights 
+ 	requires the input tensors to have the same shape.
+
+The next line of code computes the attention weights using the batched_mat_mul layer. 
+The q and k tensors are multiplied together, and the output is scaled by 1/8. 
+The attention weights are then added with the bias tensor.
+
+The final line of code adds a scale layer to the attention weights. 
+This layer normalizes the attention weights so that they sum to 1.
+
+The overall purpose of this code is to compute the attention weights for the self-attention layer in the encoder block. 
+The attention weights are used to determine how much attention each input token should pay to each other token in the 
+sequence. This allows the model to learn long-range dependencies between tokens in the sequence.
+'''
+#---------------------------------------------------------------------------------
+'''
+Sure, I can explain each builder module in the code you provided:
+
+* `conv_1D_bias = model.h[i].attn.c_attn.bias.data.numpy().reshape((1, 1, 2304, 1, 1))`
+
+This line of code retrieves the bias weights from the attention layer of the model at index `i`. The bias weights are a 1D tensor of size 2304. The `reshape` function is used to reshape the bias weights to a 5D tensor with the following dimensions:
+
+    * Batch size: 1
+    * Channel size: 1
+    * Height: 2304
+    * Width: 1
+    * Depth: 1
+
+* `conv_1D_weights = model.h[i].attn.c_attn.weight.data.numpy().transpose().reshape((1, 768, 2304, 1, 1))`
+
+This line of code retrieves the weight matrix from the attention layer of the model at index `i`. The weight matrix is a 2D tensor of size 768 x 2304. The `transpose` function is used to transpose the weight matrix, so that the channels are the first dimension. The `reshape` function is then used to reshape the weight matrix to a 5D tensor with the same dimensions as the bias weights.
+
+* `builder.add_inner_product(
+		name=f"{i}_block_attn_conv",
+		input_name=f"{i}_block_ln_1_scaled_transposed",
+		output_name=f"{i}_block_attn_conv",
+		input_channels=768,
+		output_channels=2304,
+		W=conv_1D_weights,
+		b=conv_1D_bias,
+		has_bias=True
+	)`
+
+This line of code adds an inner product layer to the neural network builder. The inner product layer takes as input the output of the layer `f"{i}_block_ln_1_scaled_transposed` and produces an output of size 2304. The `W` and `b` parameters are the weight matrix and bias vector from the attention layer. The `has_bias` parameter is set to `True` to indicate that the inner product layer has a bias vector.
+
+* `builder.add_split(
+		name=f"{i}_block_attn_qkv_split",
+		input_name=f"{i}_block_attn_conv",
+		output_names=[f"{i}_block_attn_q", f"{i}_block_attn_k", f"{i}_block_attn_v"]
+	)`
+
+This line of code adds a split layer to the neural network builder. The split layer takes as input the output of the inner product layer and produces three outputs: `f"{i}_block_attn_q`, `f"{i}_block_attn_k`, and `f"{i}_block_attn_v`. These three outputs are the query, key, and value vectors for the attention layer.
+
+I hope this explanation is helpful! Let me know if you have any other questions.
+'''
 	conv_1D_bias = model.h[i].attn.c_attn.bias.data.numpy().reshape((1, 1, 2304, 1, 1))
 	#h.0.attn.c_attn.bias	[2304]	F32
 	
@@ -132,12 +220,15 @@ for i in range(steps):
 		has_bias=True
 	)
 
+	#TAKES BLOCK ATTN - SPLITS IT INTO THREE BLOCK ATTN Q/K/V
 	builder.add_split(
 		name=f"{i}_block_attn_qkv_split",
 		input_name=f"{i}_block_attn_conv",
 		output_names=[f"{i}_block_attn_q", f"{i}_block_attn_k", f"{i}_block_attn_v"]
 	)
+#-------------------------------------------------------------------------------------------------
 
+	#ATTN Query
 	builder.add_rank_preserving_reshape(
 		name=f"{i}_block_attn_q_reshape",
 		input_name=f"{i}_block_attn_q",
@@ -266,6 +357,7 @@ for i in range(steps):
 		output_name=f"{i}_block_attn_conv_proj_t",
 		axes=[0, 3, 4, 1, 2]
 	)
+
 #---------------STARTING ATTN C PROJ BIAS-----ATTN C PROJ WEIGHT--------------
 	conv_1D_proj_bias = model.h[i].attn.c_proj.bias.data.numpy().reshape((1, 1, 768, 1, 1))
 	conv_1D_proj_weights = model.h[i].attn.c_proj.weight.data.numpy().transpose().reshape((1, 768, 768, 1, 1))

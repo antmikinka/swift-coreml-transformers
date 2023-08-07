@@ -243,6 +243,7 @@ I hope this explanation is helpful! Let me know if you have any other questions.
 		axes=(0, 1, 3, 2, 4)
 	)
 
+
 	builder.add_rank_preserving_reshape(
 		name=f"{i}_block_attn_k_reshape",
 		input_name=f"{i}_block_attn_k",
@@ -256,6 +257,8 @@ I hope this explanation is helpful! Let me know if you have any other questions.
 		output_name=f"{i}_block_attn_k_reshape_permuted",
 		axes=(0, 1, 3, 4, 2)
 	)
+
+
 
 	builder.add_rank_preserving_reshape(
 		name=f"{i}_block_attn_v_reshape",
@@ -271,6 +274,8 @@ I hope this explanation is helpful! Let me know if you have any other questions.
 		axes=(0, 1, 3, 2, 4)
 	)
 
+
+
 	builder.add_batched_mat_mul(
 		name=f"{i}_block_attn_qv_matmul",
 		input_names=[f"{i}_block_attn_q_reshape_permuted", f"{i}_block_attn_k_reshape_permuted"],
@@ -285,6 +290,8 @@ I hope this explanation is helpful! Let me know if you have any other questions.
 		b=0,
 		has_bias=False
 	)
+
+
 
 	bias_0 = model.h[i].attn.bias
 	nd = ns = sequence_length
@@ -336,6 +343,8 @@ I hope this explanation is helpful! Let me know if you have any other questions.
 		input_names=[f"{i}_expandit", f"{i}_block_attn_v_reshape_permuted"],
 		output_name=f"{i}_block_full_attention"
 	)
+
+
 
 	builder.add_transpose(
 		name=f"{i}_block_full_attention_merged_t",

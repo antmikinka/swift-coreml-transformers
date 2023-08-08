@@ -228,7 +228,7 @@ I hope this explanation is helpful! Let me know if you have any other questions.
 	)
 #-------------------------------------------------------------------------------------------------
 
-	#ATTN Query
+	#ATTN Query 1st Split
 	builder.add_rank_preserving_reshape(
 		name=f"{i}_block_attn_q_reshape",
 		input_name=f"{i}_block_attn_q",
@@ -243,7 +243,7 @@ I hope this explanation is helpful! Let me know if you have any other questions.
 		axes=(0, 1, 3, 2, 4)
 	)
 
-
+	#ATTn Key 2nd Split
 	builder.add_rank_preserving_reshape(
 		name=f"{i}_block_attn_k_reshape",
 		input_name=f"{i}_block_attn_k",
@@ -259,7 +259,7 @@ I hope this explanation is helpful! Let me know if you have any other questions.
 	)
 
 
-
+	#ATTN Value 3rd Split
 	builder.add_rank_preserving_reshape(
 		name=f"{i}_block_attn_v_reshape",
 		input_name=f"{i}_block_attn_v",
@@ -275,7 +275,7 @@ I hope this explanation is helpful! Let me know if you have any other questions.
 	)
 
 
-
+	#Query 
 	builder.add_batched_mat_mul(
 		name=f"{i}_block_attn_qv_matmul",
 		input_names=[f"{i}_block_attn_q_reshape_permuted", f"{i}_block_attn_k_reshape_permuted"],
@@ -368,6 +368,7 @@ I hope this explanation is helpful! Let me know if you have any other questions.
 	)
 
 #---------------STARTING ATTN C PROJ BIAS-----ATTN C PROJ WEIGHT--------------
+# Attention Projection Weight / Bias
 	conv_1D_proj_bias = model.h[i].attn.c_proj.bias.data.numpy().reshape((1, 1, 768, 1, 1))
 	conv_1D_proj_weights = model.h[i].attn.c_proj.weight.data.numpy().transpose().reshape((1, 768, 768, 1, 1))
 
@@ -398,8 +399,15 @@ I hope this explanation is helpful! Let me know if you have any other questions.
 		# output_name=f"output_logits"
 	)
 #------------ENDING ATTN C BIAS----------ATTN C WEIGHT-------------------------
+# Attention Projection Weight / Bias
+
+
+
+
+
 
 #-------------STARTING LN_2 BIAS--------LN_2 WEIGHT---------------
+# Layer normalization
 	ln_2_weight = model.h[i].ln_2.weight.data.numpy().reshape((1, 1, 768, 1, 1))
 	ln_2_bias = model.h[i].ln_2.bias.data.numpy().reshape((1, 1, 768, 1, 1))
 	ln_2_epsilon = model.h[i].ln_2.eps
@@ -427,7 +435,13 @@ I hope this explanation is helpful! Let me know if you have any other questions.
 	)
 
 #-------------ENDING LN_2 BIAS--------LN_2 WEIGHT---------------
+
+
+
+
 #---------------STARTING MLP C FC BIAS-----MLP C FC WEIGHT----------------------
+#Multi Layer Perception Bias & Weight
+
 	mlp_conv_1D_fc_bias = model.h[i].mlp.c_fc.bias.data.numpy().reshape((1, 1, 3072, 1, 1))
 	mlp_conv_1D_fc_weights = model.h[i].mlp.c_fc.weight.data.numpy().transpose().reshape((1, 768, 3072, 1, 1))
 
@@ -451,8 +465,14 @@ I hope this explanation is helpful! Let me know if you have any other questions.
 		# output_name=f"output_logits",
 		mode='TANH_APPROXIMATION'
 	)
+
+#Multi Layer Perception Bias & Weight
 #---------------ENDING MLP C FC BIAS-----MLP C FC WEIGHT----------------------
+
+
 #---------------STARTING MLP C PROJ BIAS-----MLP C PROJ WEIGHT----------------------
+#Multi Layer Perception Bias & Weight PROJECTED
+
 	mlp_conv_1D_proj_bias = model.h[i].mlp.c_proj.bias.data.numpy().reshape((1, 1, 768, 1, 1))
 	mlp_conv_1D_proj_weights = model.h[i].mlp.c_proj.weight.data.numpy().transpose().reshape((1, 3072, 768, 1, 1))
 
@@ -483,6 +503,9 @@ I hope this explanation is helpful! Let me know if you have any other questions.
 		axes=[1, 0, 2, 3, 4]
 	)
 #---------------ENDING MLP C PROJ BIAS-----MLP C PROJ WEIGHT----------------------
+#Multi Layer Perception Bias & Weight PROJECTED
+
+s
 
 #POSSIBILY SETTING UF FOR A METHOD OF REPEATING LN_1 THEN LN_2, THATS WHY ITS NAMED LN_F
 ln_f_weight = model.ln_f.weight.data.numpy().reshape((1, 1, 768, 1, 1))
